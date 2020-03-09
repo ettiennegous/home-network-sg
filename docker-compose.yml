@@ -1,0 +1,234 @@
+version: "3.6"
+services:
+  portainer:
+    image: portainer/portainer
+    container_name: portainer
+    restart: always
+    command: -H unix:///var/run/docker.sock
+    networks:
+      - default
+      - traefik_proxy
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${USERDIR}/docker/portainer/data:/data
+      - ${USERDIR}/docker/shared:/shared
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.backend=portainer"
+      - "traefik.frontend.rule=Host:portainer.${DOMAINNAME}"
+      - "traefik.port=9000"
+      - "traefik.docker.network=traefik_proxy"
+      - "traefik.frontend.headers.SSLRedirect=true"
+      - "traefik.frontend.headers.STSSeconds=315360000"
+      - "traefik.frontend.headers.browserXSSFilter=true"
+      - "traefik.frontend.headers.contentTypeNosniff=true"
+      - "traefik.frontend.headers.forceSTSHeader=true"
+      - "traefik.frontend.headers.SSLHost=portainer.gous.duckdns.org"
+      - "traefik.frontend.headers.STSIncludeSubdomains=true"
+      - "traefik.frontend.headers.STSPreload=true"
+      - "traefik.frontend.headers.frameDeny=true"
+  homeassistant:
+    image: homeassistant/home-assistant
+    container_name: homeassistant
+    restart: unless-stopped
+    volumes:
+      - ${USERDIR}/docker/homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+      - ${USERDIR}/docker/shared:/shared
+      - ${USERDIR}/docker/nodered/data/etc/camera-images:/config/www/camera-images
+    network_mode: host
+    ports:
+      - "8123:8123"
+      - "56700:56700/udp"
+    privileged: true
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    labels:
+      - "traefik.enable=false"
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: mqtt
+    restart: unless-stopped
+    volumes:
+      - ${USERDIR}/docker/mosquitto/config:/mosquitto/config
+      - /etc/localtime:/etc/localtime:ro
+      - ${USERDIR}/docker/mosquitto/data/mosquitto-data:/mosquitto/data
+      - ${USERDIR}/docker/mosquitto/data/mosquitto-log:/mosquitto/log
+    network_mode: host
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+  unifi:
+    image: jacobalberty/unifi
+    container_name: unifi
+    restart: always
+    network_mode: host
+    volumes:
+      - ${USERDIR}/docker/unifi/data/lib:/var/lib/unifi
+      - ${USERDIR}/docker/unifi/data/log:/var/log/unifi
+      - ${USERDIR}/docker/unifi/data/run:/var/run/unifi
+      - ${USERDIR}/docker/traefik_cert_extractor/certs/gous.duckdns.org:/unifi/cert
+    ports:
+      - "3478:3478/udp"
+      - "10001:10001/udp"
+      - "6789:6789/tcp"
+      - "8080:8080/tcp"
+      - "8081:8081/tcp"
+      - "8880:8880/tcp"
+      - "8443:8443/tcp"
+      - "8843:8843/tcp"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    labels:
+      - "traefik.enable=false"
+      - "traefik.tags=frontend"
+      - "traefik.frontend.passHostHeader=true"
+      - "traefik.admin.backend=unifi"
+      - "traefik.admin.frontend.rule=Host:unifi.${DOMAINNAME}"
+      - "traefik.admin.port=8443"
+      - "traefik.admin.protocol=https"
+      - "traefik.frontend.headers.SSLRedirect=true"
+      - "traefik.frontend.headers.STSSeconds=315360000"
+      - "traefik.frontend.headers.browserXSSFilter=true"
+      - "traefik.frontend.headers.contentTypeNosniff=true"
+      - "traefik.frontend.headers.forceSTSHeader=true"
+      - "traefik.frontend.headers.SSLHost=unifi.gous.duckdns.org"
+      - "traefik.frontend.headers.STSIncludeSubdomains=true"
+      - "traefik.frontend.headers.STSPreload=true"
+      - "traefik.frontend.headers.frameDeny=true"
+  pihole:
+    image: pihole/pihole
+    container_name: pihole
+    restart: unless-stopped
+    ports:
+      - "192.168.1.40:53:53/tcp"
+      - "192.168.1.40:53:53/udp"
+      - "192.168.1.40:67:67/udp"
+      - "192.168.1.40:8181:80/tcp"
+      - "192.168.1.40:8444:443/tcp"
+    environment:
+      - TZ=${TZ}
+    volumes:
+       - ${USERDIR}/docker/pihole/etc:/etc/pihole/
+       - ${USERDIR}/docker/pihole/dnsmasq:/etc/dnsmasq.d/
+    dns:
+      - 127.0.0.1
+      - 1.1.1.1
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - default
+      - traefik_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.backend=pihole"
+      - "traefik.frontend.rule=Host:pihole.${DOMAINNAME}"
+      - "traefik.port=80"
+      - "traefik.docker.network=traefik_proxy"
+      - "traefik.frontend.headers.SSLRedirect=true"
+      - "traefik.frontend.headers.STSSeconds=315360000"
+      - "traefik.frontend.headers.browserXSSFilter=true"
+      - "traefik.frontend.headers.contentTypeNosniff=true"
+      - "traefik.frontend.headers.forceSTSHeader=true"
+      - "traefik.frontend.headers.SSLHost=pihole.gous.duckdns.org"
+      - "traefik.frontend.headers.STSIncludeSubdomains=true"
+      - "traefik.frontend.headers.STSPreload=true"
+      - "traefik.frontend.headers.frameDeny=true"
+      - "traefik.frontend.auth.basic.users=${HTTP_USERNAME}:${HTTP_PASSWORD}"
+  nodered:
+    image: nodered/node-red-docker:v8
+    container_name: nodered
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+      - homeassistant
+    # network_mode: host
+    networks:
+      - traefik_proxy
+    ports:
+      - "1880:1880"
+    volumes:
+      - ${USERDIR}/docker/nodered/data/etc:/data
+    environment:
+      - user=${PUID}
+      - TZ=${TZ}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.backend=nodered"
+      - "traefik.frontend.rule=Host:nodered.${DOMAINNAME}"
+      - "traefik.port=1880"
+      - "traefik.docker.network=traefik_proxy"
+      - "traefik.frontend.headers.SSLRedirect=true"
+      - "traefik.frontend.headers.STSSeconds=315360000"
+      - "traefik.frontend.headers.browserXSSFilter=true"
+      - "traefik.frontend.headers.contentTypeNosniff=true"
+      - "traefik.frontend.headers.forceSTSHeader=true"
+      - "traefik.frontend.headers.SSLHost=nodered.gous.duckdns.org"
+      - "traefik.frontend.headers.STSIncludeSubdomains=true"
+      - "traefik.frontend.headers.STSPreload=true"
+      - "traefik.frontend.headers.frameDeny=true"
+      - "traefik.frontend.auth.basic.users=${HTTP_USERNAME}:${HTTP_PASSWORD}"
+  traefik:
+    image: traefik:v1.7-alpine
+    container_name: traefik
+    restart: always
+    hostname: traefik
+    domainname: ${DOMAINNAME}
+    networks:
+      - default
+      - traefik_proxy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8282:8080"
+    environment:
+      - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.backend=traefik"
+      - "traefik.frontend.rule=Host:traefik.${DOMAINNAME}"
+      - "traefik.port=8080"
+      - "traefik.docker.network=traefik_proxy"
+      - "traefik.frontend.headers.SSLRedirect=true"
+      - "traefik.frontend.headers.STSSeconds=315360000"
+      - "traefik.frontend.headers.browserXSSFilter=true"
+      - "traefik.frontend.headers.contentTypeNosniff=true"
+      - "traefik.frontend.headers.forceSTSHeader=true"
+      - "traefik.frontend.headers.SSLHost=traefik.gous.duckdns.org"
+      - "traefik.frontend.headers.STSIncludeSubdomains=true"
+      - "traefik.frontend.headers.STSPreload=true"
+      - "traefik.frontend.headers.frameDeny=true"
+      - "traefik.frontend.auth.basic.users=${HTTP_USERNAME}:${HTTP_PASSWORD}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${USERDIR}/docker/traefik:/etc/traefik
+      - ${USERDIR}/docker/shared:/shared
+  traefik_cert_extractor:
+    image: danielhuisman/traefik-certificate-extractor
+    container_name: traefik_cert_extractor
+    restart: always
+    volumes:
+      - ${USERDIR}/docker/traefik/acme:/app/data
+      - ${USERDIR}/docker/traefik_cert_extractor/certs:/app/certs 
+volumes:
+  grafana-storage:
+networks:
+  traefik_proxy:
+    external:
+      name: traefik_proxy
+  default:
+    driver: bridge
