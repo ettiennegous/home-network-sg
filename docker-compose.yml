@@ -71,15 +71,15 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
   unifi:
-    image: jacobalberty/unifi
+    image: jacobalberty/unifi:arm32v7
     container_name: unifi
     restart: always
     network_mode: host
     volumes:
-      - ${USERDIR}/docker/unifi/data/lib:/var/lib/unifi
-      - ${USERDIR}/docker/unifi/data/log:/var/log/unifi
+      - ${USERDIR}/docker/unifi/data/lib:/unifi/data
+      - ${USERDIR}/docker/unifi/data/log:/unifi/log
       - ${USERDIR}/docker/unifi/data/run:/var/run/unifi
-      - ${USERDIR}/docker/traefik_cert_extractor/certs/sg31.duckdns.org:/unifi/cert
+#      - ${USERDIR}/docker/traefik_cert_extractor/certs/sg31.duckdns.org:/unifi/cert
     ports:
       - "3478:3478/udp"
       - "10001:10001/udp"
@@ -93,23 +93,25 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-    labels:
-      - "traefik.enable=false"
-      - "traefik.tags=frontend"
-      - "traefik.frontend.passHostHeader=true"
-      - "traefik.admin.backend=unifi"
-      - "traefik.admin.frontend.rule=Host:unifi.${DOMAINNAME}"
-      - "traefik.admin.port=8443"
-      - "traefik.admin.protocol=https"
-      - "traefik.frontend.headers.SSLRedirect=true"
-      - "traefik.frontend.headers.STSSeconds=315360000"
-      - "traefik.frontend.headers.browserXSSFilter=true"
-      - "traefik.frontend.headers.contentTypeNosniff=true"
-      - "traefik.frontend.headers.forceSTSHeader=true"
-      - "traefik.frontend.headers.SSLHost=unifi.sg31.duckdns.org"
-      - "traefik.frontend.headers.STSIncludeSubdomains=true"
-      - "traefik.frontend.headers.STSPreload=true"
-      - "traefik.frontend.headers.frameDeny=true"
+      - UNIFI_HTTP_PORT=8080
+      - UNIFI_HTTPS_PORT=8443
+#    labels:
+#      - "traefik.enable=false"
+#      - "traefik.tags=frontend"
+#      - "traefik.frontend.passHostHeader=true"
+#      - "traefik.admin.backend=unifi"
+#      - "traefik.admin.frontend.rule=Host:unifi.${DOMAINNAME}"
+#      - "traefik.admin.port=8443"
+#      - "traefik.admin.protocol=https"
+#      - "traefik.frontend.headers.SSLRedirect=true"
+#      - "traefik.frontend.headers.STSSeconds=315360000"
+#      - "traefik.frontend.headers.browserXSSFilter=true"
+#      - "traefik.frontend.headers.contentTypeNosniff=true"
+#      - "traefik.frontend.headers.forceSTSHeader=true"
+#      - "traefik.frontend.headers.SSLHost=unifi.sg31.duckdns.org"
+#      - "traefik.frontend.headers.STSIncludeSubdomains=true"
+#      - "traefik.frontend.headers.STSPreload=true"
+#      - "traefik.frontend.headers.frameDeny=true"
   pihole:
     image: pihole/pihole
     container_name: pihole
